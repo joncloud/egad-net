@@ -20,9 +20,10 @@ namespace Egad
             dataSet.DataSetName = jobject.GetPropertyValue<string>("dataSetName");
             dataSet.EnforceConstraints = jobject.GetPropertyValue<bool>("enforceConstraints");
             PopulateProperties(dataSet.ExtendedProperties, (JObject)jobject.Property("extendedProperties").Value);
-            dataSet.Locale = jobject.GetPropertyValue<CultureInfo>("locale", _serializer);
+            //dataSet.Locale = jobject.GetPropertyValue<CultureInfo>("locale", _serializer);
             dataSet.Prefix = jobject.GetPropertyValue<string>("prefix");
-            dataSet.CaseSensitive = jobject.GetPropertyValue<bool>("caseSensitive");
+            if (jobject.GetPropertyValue<bool>("caseSensitive"))
+                dataSet.CaseSensitive = true;
             dataSet.RemotingFormat = jobject.GetPropertyValue<SerializationFormat>("remotingFormat", _serializer);
             dataSet.SchemaSerializationMode = jobject.GetPropertyValue<SchemaSerializationMode>("schemaSerializationMode", _serializer);
             PopulateDataTables(dataSet.Tables, (JObject)jobject.Property("tables").Value);
@@ -77,14 +78,15 @@ namespace Egad
         void PopulateDataTable(DataTable dataTable, JObject jobject)
         {
             dataTable.MinimumCapacity = jobject.GetPropertyValue<int>("minimumCapacity");
-            dataTable.Locale = jobject.GetPropertyValue<CultureInfo>("locale", _serializer);
+            //dataTable.Locale = jobject.GetPropertyValue<CultureInfo>("locale", _serializer);
             PopulateProperties(dataTable.ExtendedProperties, (JObject)jobject.Property("extendedProperties").Value);
             dataTable.Namespace = jobject.GetPropertyValue<string>("namespace");
             PopulateDataColumns(dataTable.Columns, (JArray)jobject.Property("columns").Value);
             dataTable.DisplayExpression = jobject.GetPropertyValue<string>("displayExpression");
             dataTable.RemotingFormat = jobject.GetPropertyValue<SerializationFormat>("remotingFormat", _serializer);
             dataTable.PrimaryKey = jobject.GetPropertyValue<string[]>("primaryKey", _serializer).Select(name => dataTable.Columns[name]).ToArray();
-            dataTable.CaseSensitive = jobject.GetPropertyValue<bool>("caseSensitive");
+            if (jobject.GetPropertyValue<bool>("caseSensitive"))
+                dataTable.CaseSensitive = true;
             PopulateDataRows(dataTable, (JArray)jobject.Property("rows").Value);
             dataTable.TableName = jobject.GetPropertyValue<string>("tableName");
             dataTable.Prefix = jobject.GetPropertyValue<string>("prefix");

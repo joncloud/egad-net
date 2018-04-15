@@ -47,13 +47,13 @@ namespace Egad.UnitTests
             AddChildRow(parentRowId, 0.01M, _ => { });
             AddChildRow(parentRowId, 0.001M, _ => { });
 
-            dataSet.Relations.Add(
-                new DataRelation(
-                    "A",
-                    parent.Columns["Id"],
-                    child.Columns["ParentId"]
-                )
-            );
+            // dataSet.Relations.Add(
+            //     new DataRelation(
+            //         "A",
+            //         parent.Columns["Id"],
+            //         child.Columns["ParentId"]
+            //     )
+            // );
 
             var dataTypes = dataSet.Tables.Add("DataTypes");
 
