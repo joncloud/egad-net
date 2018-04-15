@@ -14,7 +14,7 @@ namespace Egad.UnitTests
             var cloned = Clone(dataSet);
 
             var expected = SerializeXml(dataSet, fn);
-            var actual = SerializeXml(dataSet, fn);
+            var actual = SerializeXml(cloned, fn);
 
             Assert.Equal(expected, actual);
         }
