@@ -95,9 +95,9 @@ namespace Egad
                     case "enforceConstraints":
                         DataSet.EnforceConstraints = (bool)reader.Value;
                         break;
-                    case "locale":
-                        DataSet.Locale = _serializer.Deserialize<CultureInfo>(reader);
-                        break;
+                    // case "locale":
+                    //     DataSet.Locale = _serializer.Deserialize<CultureInfo>(reader);
+                    //     break;
                     case "prefix":
                         DataSet.Prefix = (string)reader.Value;
                         break;
@@ -162,9 +162,9 @@ namespace Egad
                     case "minimumCapacity":
                         _dataTable.MinimumCapacity = (int)reader.Value;
                         break;
-                    case "locale":
-                        _dataTable.Locale = _serializer.Deserialize<CultureInfo>(reader);
-                        break;
+                    // case "locale":
+                    //     _dataTable.Locale = _serializer.Deserialize<CultureInfo>(reader);
+                    //     break;
                     case "extendedProperties":
                         return new PropertyCollectionLexer(_serializer, _dataTable.ExtendedProperties);
                     case "namespace":

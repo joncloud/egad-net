@@ -33,7 +33,7 @@ namespace Egad.UnitTests
 
             var parentRowId = AddParentRow(1.111M, _ => { });
             AddParentRow(2.222M, row => row.AcceptChanges());
-            AddParentRow(3.000M, row => { row.AcceptChanges(); row["Amount"] = 3.333M; });
+            AddParentRow(3M, row => { row.AcceptChanges(); row["Amount"] = 3.333M; });
             AddParentRow(4.444M, row => { row.AcceptChanges(); row.Delete(); });
 
             var child = dataSet.Tables.Add("Child");
@@ -42,18 +42,18 @@ namespace Egad.UnitTests
             child.Columns.Add("ParentId", typeof(Guid));
             child.Columns.Add("Amount", typeof(decimal));
 
-            AddChildRow(parentRowId, 1.000M, _ => { });
-            AddChildRow(parentRowId, 0.100M, _ => { });
-            AddChildRow(parentRowId, 0.010M, _ => { });
+            AddChildRow(parentRowId, 1M, _ => { });
+            AddChildRow(parentRowId, 0.1M, _ => { });
+            AddChildRow(parentRowId, 0.01M, _ => { });
             AddChildRow(parentRowId, 0.001M, _ => { });
 
-            dataSet.Relations.Add(
-                new DataRelation(
-                    "A",
-                    parent.Columns["Id"],
-                    child.Columns["ParentId"]
-                )
-            );
+            // dataSet.Relations.Add(
+            //     new DataRelation(
+            //         "A",
+            //         parent.Columns["Id"],
+            //         child.Columns["ParentId"]
+            //     )
+            // );
 
             var dataTypes = dataSet.Tables.Add("DataTypes");
 
