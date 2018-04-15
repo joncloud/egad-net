@@ -247,8 +247,7 @@ namespace Egad
                             _dataTable.CaseSensitive = true;
                         break;
                     case "rows":
-                        // return new DataRowCollectionLexer(_serializer, _dataTable);
-                        break;
+                        return new DataRowCollectionLexer(_serializer, _dataTable);
                     case "tableName":
                         _dataTable.TableName = (string)reader.Value;
                         break;
@@ -257,6 +256,98 @@ namespace Egad
                         break;
                 }
                 return null;
+            }
+        }
+
+        class DataRowCollectionLexer : ArrayLexerBase
+        {
+            readonly JsonSerializer _serializer;
+            readonly DataTable _dataTable;
+
+            public DataRowCollectionLexer(JsonSerializer serializer, DataTable dataTable)
+            {
+                _serializer = serializer;
+                _dataTable = dataTable;
+            }
+
+            protected override IDataSetLexer HandleObject(JsonReader reader)
+            {
+                var dataRow = _dataTable.NewRow();
+                _dataTable.Rows.Add(dataRow);
+                return new DataRowLexer(_serializer, dataRow, _dataTable.Columns.Count);
+            }
+        }
+
+        class DataRowLexer : ObjectLexerBase
+        {
+            readonly JsonSerializer _serializer;
+            readonly DataRow _dataRow;
+            readonly int _columnCount;
+
+            public DataRowLexer(JsonSerializer serializer, DataRow dataRow, int columnCount)
+            {
+                _serializer = serializer;
+                _dataRow = dataRow;
+                _columnCount = columnCount;
+            }
+
+            protected override bool ContinueReading(int depth) => depth > 0;
+
+            DataRowState _rowState;
+            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader)
+            {
+                switch (propertyName)
+                {
+                    case "rowError":
+                        _dataRow.RowError = (string)reader.Value;
+                        break;
+                    case "rowState":
+                        _rowState = _serializer.Deserialize<DataRowState>(reader);
+                        break;
+                    case "currentValues":
+                        object[] currentValues = _serializer.Deserialize<object[]>(reader);
+                        switch (_rowState)
+                        {
+                            case DataRowState.Added:
+                                SetRowValues(currentValues);
+                                break;
+                            case DataRowState.Modified:
+                                SetRowValues(currentValues);
+                                break;
+                            default:
+                                SetRowValues(currentValues);
+                                _dataRow.AcceptChanges();
+                                break;
+
+                            case DataRowState.Deleted:
+                                break;
+                        }
+                        break;
+                    case "originalValues":
+                        object[] originalValues = _serializer.Deserialize<object[]>(reader);
+                        switch (_rowState)
+                        {
+                            case DataRowState.Deleted:
+                                SetRowValues(originalValues);
+                                _dataRow.AcceptChanges();
+                                _dataRow.Delete();
+                                break;
+                            case DataRowState.Modified:
+                                SetRowValues(originalValues);
+                                _dataRow.AcceptChanges();
+                                break;
+                        }
+                        break;
+                }
+                return null;
+
+                void SetRowValues(object[] rowValues)
+                {
+                    for (int i = 0; i < _columnCount; i++)
+                    {
+                        _dataRow[i] = rowValues[i] ?? DBNull.Value;
+                    }
+                }
             }
         }
 
@@ -439,48 +530,6 @@ namespace Egad
             //PopulateProperties(dataRelation.ExtendedProperties, (JObject)jobject.Property("extendedProperties").Value);
 
             return dataRelation;
-        }
-
-        void PopulateDataRows(DataTable dataTable, JArray jarray)
-        {
-            int columnCount = dataTable.Columns.Count;
-            foreach (var jobject in jarray.OfType<JObject>())
-            {
-                DataRow row = dataTable.NewRow();
-                dataTable.Rows.Add(row);
-                row.RowError = jobject.GetPropertyValue<string>("rowError");
-                var rowState = jobject.GetPropertyValue<DataRowState>("rowState", _serializer);
-                switch (rowState)
-                {
-                    case DataRowState.Added:
-                        SetRowValues("currentValues");
-                        break;
-                    case DataRowState.Deleted:
-                        SetRowValues("originalValues");
-                        row.AcceptChanges();
-                        row.Delete();
-                        break;
-                    case DataRowState.Modified:
-                        SetRowValues("originalValues");
-                        row.AcceptChanges();
-                        SetRowValues("currentValues");
-                        break;
-                    default:
-                        SetRowValues("currentValues");
-                        row.AcceptChanges();
-                        break;
-                }
-
-                void SetRowValues(string propertyName)
-                {
-                    var rowValues = jobject.Property(propertyName).Value.ToObject<object[]>(_serializer);
-
-                    for (int i = 0; i < columnCount; i++)
-                    {
-                        row[i] = rowValues[i] ?? DBNull.Value;
-                    }
-                }
-            }
         }
     }
 }

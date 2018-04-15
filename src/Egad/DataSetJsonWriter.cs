@@ -78,11 +78,11 @@ namespace Egad
         {
             _writer.WriteStartObject();
             _writer.WriteProperty("rowError", dataRow.RowError);
+            _writer.WriteProperty("rowState", dataRow.RowState);
             _writer.WritePropertyName("originalValues");
             WriteCells(DataRowVersion.Original, state => state == DataRowState.Deleted || state == DataRowState.Modified);
             _writer.WritePropertyName("currentValues");
             WriteCells(DataRowVersion.Current, state => state == DataRowState.Added || state == DataRowState.Modified || state == DataRowState.Unchanged);
-            _writer.WriteProperty("rowState", dataRow.RowState);
             _writer.WriteEndObject();
 
             void WriteCells(DataRowVersion version, Func<DataRowState, bool> fn)
