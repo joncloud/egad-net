@@ -173,8 +173,94 @@ namespace Egad
                         return new PropertyCollectionLexer(_serializer, DataSet.ExtendedProperties);
                     case "tables":
                         return new DataTableCollectionLexer(_serializer, DataSet.Tables);
+                    case "relations":
+                        return new DataRelationCollectionLexer(_serializer, DataSet.Relations);
                 }
 
+                return null;
+            }
+        }
+
+        class DataRelationCollectionLexer : ObjectLexerBase
+        {
+            readonly JsonSerializer _serializer;
+            readonly DataRelationCollection _relations;
+
+            public DataRelationCollectionLexer(JsonSerializer serializer, DataRelationCollection relations)
+            {
+                _serializer = serializer;
+                _relations = relations;
+            }
+
+            protected override bool ContinueReading(int depth) => depth > 0;
+
+            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader) =>
+                new DataRelationLexer(_serializer, _relations, propertyName);
+        }
+
+        class DataRelationLexer : ObjectLexerBase
+        {
+            readonly string _name;
+            readonly DataRelationCollection _relations;
+            readonly JsonSerializer _serializer;
+            public DataRelationLexer(JsonSerializer serializer, DataRelationCollection relations, string name)
+            {
+                _serializer = serializer;
+                _relations = relations;
+                _name = name;
+            }
+
+            protected override bool ContinueReading(int depth) => depth > 0;
+
+            string[] _parentColumnNames;
+            bool _nested;
+            string _childTableName;
+            string[] _childColumnNames;
+            string _parentTableName;
+
+            int _propertyReadCount = 0;
+            bool _added;
+            void AddIfReached()
+            {
+                if (_added) return;
+                if (++_propertyReadCount < 5) return;
+                _relations.Add(
+                    new DataRelation(
+                        _name,
+                        _parentTableName,
+                        _childTableName,
+                        _parentColumnNames,
+                        _childColumnNames,
+                        _nested
+                    )
+                );
+                _added = true;
+            }
+            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader)
+            {
+                switch (propertyName)
+                {
+                    case "parentColumnNames":
+                        _parentColumnNames = _serializer.Deserialize<string[]>(reader);
+                        AddIfReached();
+                        break;
+                    case "nested":
+                        _nested = (bool)reader.Value;
+                        AddIfReached();
+                        break;
+                    case "childTableName":
+                        _childTableName = (string)reader.Value;
+                        AddIfReached();
+                        break;
+                    case "childColumnNames":
+                        _childColumnNames = _serializer.Deserialize<string[]>(reader);
+                        AddIfReached();
+                        break;
+                    case "parentTableName":
+                        _parentTableName = (string)reader.Value;
+                        AddIfReached();
+                        break;
+                }
                 return null;
             }
         }
@@ -499,37 +585,6 @@ namespace Egad
                 return lexer.DataSet;
             }
             return null;
-        }
-
-        void PopulateDataRelations(DataSet dataSet, JObject jobject)
-        {
-            foreach (var jproperty in jobject.Properties())
-            {
-                var dataRelation = ReadDataRelation(
-                    jproperty.Name,
-                    (JObject)jproperty.Value
-                );
-                dataSet.Relations.Add(dataRelation);
-            }
-        }
-
-        DataRelation ReadDataRelation(string relationName, JObject jobject)
-        {
-            var dataRelation = new DataRelation(
-                relationName,
-                jobject.GetPropertyValue<string>("parentTableName"),
-                jobject.GetPropertyValue<string>("childTableName"),
-                jobject.GetPropertyValue<string[]>("parentColumnNames", _serializer),
-                jobject.GetPropertyValue<string[]>("childColumnNames", _serializer),
-                jobject.GetPropertyValue<bool>("nested")
-            );
-
-            // ParentKeyConstraint?
-            // ChildKeyConstraint?
-
-            //PopulateProperties(dataRelation.ExtendedProperties, (JObject)jobject.Property("extendedProperties").Value);
-
-            return dataRelation;
         }
     }
 }
