@@ -24,11 +24,12 @@ namespace Egad
             _writer.WriteProperty("locale", dataSet.Locale, _serializer);
             _writer.WriteProperty("prefix", dataSet.Prefix);
             _writer.WriteProperty("caseSensitive", dataSet.CaseSensitive);
-            WriteDataRelations(dataSet.Relations);
             _writer.WriteProperty("remotingFormat", dataSet.RemotingFormat);
             _writer.WriteProperty("schemaSerializationMode", dataSet.SchemaSerializationMode);
             WriteDataTables(dataSet.Tables);
-            _writer.WriteProperty("namespace", dataSet.Namespace);
+            if (!string.IsNullOrWhiteSpace(dataSet.Namespace))
+                _writer.WriteProperty("namespace", dataSet.Namespace);
+            WriteDataRelations(dataSet.Relations);
             _writer.WriteEndObject();
         }
 
@@ -50,7 +51,8 @@ namespace Egad
             _writer.WriteProperty("minimumCapacity", dataTable.MinimumCapacity);
             _writer.WriteProperty("locale", dataTable.Locale, _serializer);
             WriteProperties(dataTable.ExtendedProperties);
-            _writer.WriteProperty("namespace", dataTable.Namespace);
+            if (!string.IsNullOrWhiteSpace(dataTable.Namespace))
+                _writer.WriteProperty("namespace", dataTable.Namespace);
             //TODO writer.WriteProperty("contraints", value.Constraints, serializer);
             WriteDataColumns(dataTable.Columns);
             _writer.WriteProperty("displayExpression", dataTable.DisplayExpression);
@@ -58,7 +60,6 @@ namespace Egad
             _writer.WriteProperty("primaryKey", dataTable.PrimaryKey.Select(col => col.ColumnName).ToArray(), _serializer);
             _writer.WriteProperty("caseSensitive", dataTable.CaseSensitive);
             WriteDataRows(dataTable.Rows);
-            _writer.WriteProperty("tableName", dataTable.TableName);
             _writer.WriteProperty("prefix", dataTable.Prefix);
             _writer.WriteEndObject();
         }
@@ -115,7 +116,8 @@ namespace Egad
             _writer.WriteStartObject();
             _writer.WriteProperty("readOnly", dataColumn.ReadOnly);
             _writer.WriteProperty("prefix", dataColumn.Prefix);
-            _writer.WriteProperty("namespace", dataColumn.Namespace);
+            if (!string.IsNullOrWhiteSpace(dataColumn.Namespace))
+                _writer.WriteProperty("namespace", dataColumn.Namespace);
             _writer.WriteProperty("maxLength", dataColumn.MaxLength);
             _writer.WriteProperty("extendedProperties", dataColumn.ExtendedProperties, _serializer);
             _writer.WriteProperty("expression", dataColumn.Expression);

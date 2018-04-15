@@ -167,7 +167,11 @@ namespace Egad
                         DataSet.SchemaSerializationMode = _serializer.Deserialize<SchemaSerializationMode>(reader);
                         break;
                     case "namespace":
-                        DataSet.Namespace = (string)reader.Value;
+                        var @namespace = (string)reader.Value;
+                        if (!string.IsNullOrWhiteSpace(@namespace))
+                        {
+                            DataSet.Namespace = @namespace;
+                        }
                         break;
                     case "extendedProperties":
                         return new PropertyCollectionLexer(_serializer, DataSet.ExtendedProperties);
@@ -314,7 +318,11 @@ namespace Egad
                     case "extendedProperties":
                         return new PropertyCollectionLexer(_serializer, _dataTable.ExtendedProperties);
                     case "namespace":
-                        _dataTable.Namespace = (string)reader.Value;
+                        var @namespace = (string)reader.Value;
+                        if (!string.IsNullOrWhiteSpace(@namespace))
+                        {
+                            _dataTable.Namespace = @namespace;
+                        }
                         break;
                     case "columns":
                         return new DataColumnCollectionLexer(_serializer, _dataTable.Columns);
@@ -334,9 +342,6 @@ namespace Egad
                         break;
                     case "rows":
                         return new DataRowCollectionLexer(_serializer, _dataTable);
-                    case "tableName":
-                        _dataTable.TableName = (string)reader.Value;
-                        break;
                     case "prefix":
                         _dataTable.Prefix = (string)reader.Value;
                         break;
@@ -478,7 +483,11 @@ namespace Egad
                         _dataColumn.Prefix = (string)reader.Value;
                         break;
                     case "namespace":
-                        _dataColumn.Namespace = (string)reader.Value;
+                        var @namespace = (string)reader.Value;
+                        if (!string.IsNullOrWhiteSpace(@namespace))
+                        {
+                            _dataColumn.Namespace = @namespace;
+                        }
                         break;
                     case "maxLength":
                         _dataColumn.MaxLength = (int)(long)reader.Value;
