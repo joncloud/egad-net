@@ -8,7 +8,7 @@ namespace Egad
     {
         public override DataSet ReadJson(JsonReader reader, Type objectType, DataSet existingValue, bool hasExistingValue, JsonSerializer serializer)
         {
-            return new DataSetJsonReader(serializer).Read(reader);
+            return new DataSetJsonReader(serializer, reader).Read();
         }
 
         public override void WriteJson(JsonWriter writer, DataSet value, JsonSerializer serializer)
