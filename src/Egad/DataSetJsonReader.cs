@@ -37,8 +37,10 @@ namespace Egad
 
                 do
                 {
-                    if (lexers.TryPop(out var lexer))
+                    
+                    if (lexers.Count > 0)
                     {
+                        var lexer = lexers.Pop();
                         lexer.Lex(reader);
                     }
                     else
@@ -55,7 +57,7 @@ namespace Egad
                                 break;
 
                             case JsonToken.StartObject:
-                                lexer = HandleObject(reader);
+                                var lexer = HandleObject(reader);
                                 if (lexer == null)
                                 {
                                     reading = reader.Read();
@@ -86,8 +88,9 @@ namespace Egad
 
                 do
                 {
-                    if (lexers.TryPop(out var lexer))
+                    if (lexers.Count > 0)
                     {
+                        var lexer = lexers.Pop();
                         lexer.Lex(reader);
                     }
                     else
@@ -99,7 +102,7 @@ namespace Egad
                                 else if (reader.TokenType == JsonToken.EndObject) depth--;
                                 if (lastPropertyName != null)
                                 {
-                                    lexer = HandleProperty(lastPropertyName, reader);
+                                    var lexer = HandleProperty(lastPropertyName, reader);
                                     if (lexer == null)
                                     {
                                         reading = reader.Read();
