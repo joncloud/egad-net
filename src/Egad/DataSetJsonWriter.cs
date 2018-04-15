@@ -148,6 +148,8 @@ namespace Egad
 
         void WriteDataRelations(DataRelationCollection dataRelations)
         {
+            if (dataRelations.Count == 0) return;
+
             _writer.WritePropertyName("relations");
             _writer.WriteStartObject();
             foreach (DataRelation dataRelation in dataRelations)
@@ -155,7 +157,6 @@ namespace Egad
                 WriteDataRelation(dataRelation);
             }
             _writer.WriteEndObject();
-
         }
 
         void WriteDataRelation(DataRelation dataRelation)
