@@ -47,6 +47,14 @@ namespace Egad.UnitTests
             AddChildRow(parentRowId, 0.010M, _ => { });
             AddChildRow(parentRowId, 0.001M, _ => { });
 
+            dataSet.Relations.Add(
+                new DataRelation(
+                    "A",
+                    parent.Columns["Id"],
+                    child.Columns["ParentId"]
+                )
+            );
+
             var dataTypes = dataSet.Tables.Add("DataTypes");
 
             dataTypes.Columns.Add("DateTime", typeof(DateTime));
