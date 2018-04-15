@@ -92,6 +92,7 @@ namespace Egad.BenchmarkTests
             table.Columns.Add("decimal", typeof(decimal));
             table.Columns.Add("Guid", typeof(Guid));
             table.Columns.Add("string", typeof(string));
+            table.Columns.Add("nullableInt", typeof(int));
             
             table.Rows.Add(
                 DateTime.MaxValue,
@@ -101,7 +102,8 @@ namespace Egad.BenchmarkTests
                 double.MaxValue,
                 decimal.MaxValue / 10M,
                 Guid.Empty,
-                "lorem ipsum"
+                "lorem ipsum",
+                DBNull.Value
             );
 
             return table;
