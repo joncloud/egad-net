@@ -21,7 +21,7 @@ namespace Egad
             _writer.WriteProperty("dataSetName", dataSet.DataSetName);
             _writer.WriteProperty("enforceConstraints", dataSet.EnforceConstraints);
             WriteProperties(dataSet.ExtendedProperties);
-            //_writer.WriteProperty("locale", dataSet.Locale, _serializer);
+            _writer.WriteProperty("locale", dataSet.Locale, _serializer);
             _writer.WriteProperty("prefix", dataSet.Prefix);
             _writer.WriteProperty("caseSensitive", dataSet.CaseSensitive);
             WriteDataRelations(dataSet.Relations);
@@ -48,7 +48,7 @@ namespace Egad
             _writer.WritePropertyName(dataTable.TableName);
             _writer.WriteStartObject();
             _writer.WriteProperty("minimumCapacity", dataTable.MinimumCapacity);
-            //_writer.WriteProperty("locale", dataTable.Locale, _serializer);
+            _writer.WriteProperty("locale", dataTable.Locale, _serializer);
             WriteProperties(dataTable.ExtendedProperties);
             _writer.WriteProperty("namespace", dataTable.Namespace);
             //TODO writer.WriteProperty("contraints", value.Constraints, serializer);
