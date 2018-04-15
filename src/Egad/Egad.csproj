@@ -3,9 +3,29 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
   </PropertyGroup>
+  
+  <PropertyGroup>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionSuffix>local</VersionSuffix>
+  </PropertyGroup>
+  
+  <PropertyGroup>
+    <Description>Converts DataSets to JSON using Json.NET</Description>
+    <Copyright>Copyright (c) 2018 joncloud (jdberube@gmail.com)</Copyright>
+    <AssemblyTitle>Egad</AssemblyTitle>
+    <Authors>joncloud</Authors>
+    <AssemblyName>Egad</AssemblyName>
+    <PackageId>Egad</PackageId>
+    <PackageTags>json;dataset;xml;legacy</PackageTags>
+    <PackageReleaseNotes>https://github.com/joncloud/egad-net/releases</PackageReleaseNotes>
+    <!--<PackageIconUrl>https://raw.githubusercontent.com/joncloud/egad-net/master/nuget.png</PackageIconUrl>-->
+    <PackageProjectUrl>https://github.com/joncloud/egad-net</PackageProjectUrl>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/joncloud/egad-net/master/LICENSE.md</PackageLicenseUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/joncloud/egad-net</RepositoryUrl>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
   </ItemGroup>
-
 </Project>
