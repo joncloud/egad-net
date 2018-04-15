@@ -65,6 +65,7 @@ namespace Egad.UnitTests
             dataTypes.Columns.Add("decimal", typeof(decimal));
             dataTypes.Columns.Add("Guid", typeof(Guid));
             dataTypes.Columns.Add("string", typeof(string));
+            dataTypes.Columns.Add("nullableInt", typeof(int));
 
             var random = new Random(0);
             dataTypes.Rows.Add(
@@ -75,7 +76,8 @@ namespace Egad.UnitTests
                 random.NextDouble(),
                 (decimal)random.NextDouble(),
                 Guid.NewGuid(),
-                Guid.NewGuid().ToString()
+                Guid.NewGuid().ToString(),
+                DBNull.Value
             );
 
             Guid AddParentRow(decimal amount, Action<DataRow> fn)

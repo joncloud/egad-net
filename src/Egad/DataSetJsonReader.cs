@@ -126,7 +126,7 @@ namespace Egad
 
                     for (int i = 0; i < columnCount; i++)
                     {
-                        row[i] = rowValues[i];
+                        row[i] = rowValues[i] ?? DBNull.Value;
                     }
                 }
             }
