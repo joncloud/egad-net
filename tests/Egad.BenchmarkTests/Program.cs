@@ -8,7 +8,7 @@ namespace Egad.BenchmarkTests
     {
         static void Main(string[] args)
         {
-            var typeName = args.DefaultIfEmpty("Join").ElementAtOrDefault(0);
+            var typeName = args.DefaultIfEmpty("Complex").ElementAtOrDefault(0);
             var fullTypeName = string.Join(
                 ".",
                 nameof(Egad),

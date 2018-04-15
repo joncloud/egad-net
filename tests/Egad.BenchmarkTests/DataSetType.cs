@@ -4,6 +4,7 @@
     {
         Parent,
         Child,
-        DataTypes
+        DataTypes,
+        Relationship
     }
 }

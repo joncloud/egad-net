@@ -120,6 +120,17 @@ namespace Egad.BenchmarkTests
                 {
                     var child = CreateChildTable((Guid)parent.Rows[0][0]);
                     dataSet.Tables.Add(child);
+
+                    if (type.HasFlag(DataSetType.Relationship))
+                    {
+                        dataSet.Relations.Add(
+                            new DataRelation(
+                                "A",
+                                parent.Columns["Id"],
+                                child.Columns["ParentId"]
+                            )
+                        );
+                    }
                 }
             }
 
