@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using System;
 using System.Data;
 using System.Linq;
 
@@ -78,16 +79,16 @@ namespace Egad
             _writer.WriteStartObject();
             _writer.WriteProperty("rowError", dataRow.RowError);
             _writer.WritePropertyName("originalValues");
-            WriteCells(DataRowVersion.Original, DataRowState.Added);
+            WriteCells(DataRowVersion.Original, state => state == DataRowState.Deleted || state == DataRowState.Modified);
             _writer.WritePropertyName("currentValues");
-            WriteCells(DataRowVersion.Current, DataRowState.Deleted);
+            WriteCells(DataRowVersion.Current, state => state == DataRowState.Added || state == DataRowState.Modified || state == DataRowState.Unchanged);
             _writer.WriteProperty("rowState", dataRow.RowState);
             _writer.WriteEndObject();
 
-            void WriteCells(DataRowVersion version, DataRowState ifNotState)
+            void WriteCells(DataRowVersion version, Func<DataRowState, bool> fn)
             {
                 _writer.WriteStartArray();
-                if (dataRow.RowState != ifNotState)
+                if (fn(dataRow.RowState))
                 {
                     for (int i = 0; i < dataRow.Table.Columns.Count; i++)
                     {
