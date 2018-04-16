@@ -56,7 +56,7 @@ namespace Egad
                                 reading = reader.Read();
                                 break;
 
-                            case JsonToken.StartObject:
+                            default:
                                 var lexer = HandleObject(reader);
                                 if (lexer == null)
                                 {
@@ -372,6 +372,39 @@ namespace Egad
             }
         }
 
+        class DataRowCellsLexer : ArrayLexerBase
+        {
+            readonly JsonSerializer _serializer;
+            readonly DataRow _dataRow;
+            readonly DataRowState _rowState;
+            readonly DataColumnCollection _dataColumns;
+            readonly Action<DataRow> _complete;
+
+            public DataRowCellsLexer(JsonSerializer serializer, DataColumnCollection dataColumns, DataRow dataRow, DataRowState rowState, Action<DataRow> complete)
+            {
+                _serializer = serializer;
+                _dataRow = dataRow;
+                _rowState = rowState;
+                _dataColumns = dataColumns;
+                _complete = complete;
+            }
+
+            int _position;
+            protected override IDataSetLexer HandleObject(JsonReader reader)
+            {
+                if (reader.TokenType == JsonToken.Null)
+                    _dataRow[_position] = DBNull.Value;
+                else
+                    _dataRow[_position] = _serializer.Deserialize(reader, _dataColumns[_position].DataType);
+                _position++;
+                if (_position == _dataColumns.Count)
+                {
+                    _complete(_dataRow);
+                }
+                return null;
+            }
+        }
+
         class DataRowLexer : ObjectLexerBase
         {
             readonly JsonSerializer _serializer;
@@ -399,48 +432,39 @@ namespace Egad
                         _rowState = _serializer.Deserialize<DataRowState>(reader);
                         break;
                     case "currentValues":
-                        object[] currentValues = _serializer.Deserialize<object[]>(reader);
-                        switch (_rowState)
-                        {
-                            case DataRowState.Added:
-                                SetRowValues(currentValues);
-                                break;
-                            case DataRowState.Modified:
-                                SetRowValues(currentValues);
-                                break;
-                            default:
-                                SetRowValues(currentValues);
-                                _dataRow.AcceptChanges();
-                                break;
-
-                            case DataRowState.Deleted:
-                                break;
-                        }
-                        break;
+                        return new DataRowCellsLexer(
+                            _serializer,
+                            _dataRow.Table.Columns,
+                            _dataRow,
+                            _rowState,
+                            _rowState == DataRowState.Unchanged 
+                                ? new Action<DataRow>(row => row.AcceptChanges()) 
+                                : _ => { }
+                        );
                     case "originalValues":
-                        object[] originalValues = _serializer.Deserialize<object[]>(reader);
-                        switch (_rowState)
-                        {
-                            case DataRowState.Deleted:
-                                SetRowValues(originalValues);
-                                _dataRow.AcceptChanges();
-                                _dataRow.Delete();
-                                break;
-                            case DataRowState.Modified:
-                                SetRowValues(originalValues);
-                                _dataRow.AcceptChanges();
-                                break;
-                        }
-                        break;
+                        return new DataRowCellsLexer(
+                            _serializer,
+                            _dataRow.Table.Columns,
+                            _dataRow,
+                            _rowState,
+                            _rowState == DataRowState.Deleted
+                                ? new Action<DataRow>(row =>
+                                {
+                                    row.AcceptChanges();
+                                    row.Delete();
+                                })
+                                : row => row.AcceptChanges()
+                        );
                 }
                 return null;
+            }
 
-                void SetRowValues(object[] rowValues)
+            void SetRowValues(object[] rowValues)
+            {
+                int i = _columnCount;
+                while (--i > -1)
                 {
-                    for (int i = 0; i < _columnCount; i++)
-                    {
-                        _dataRow[i] = rowValues[i] ?? DBNull.Value;
-                    }
+                    _dataRow[i] = rowValues[i] ?? DBNull.Value;
                 }
             }
         }
