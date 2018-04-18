@@ -142,7 +142,7 @@ namespace Egad
         void WriteDataColumn(DataColumn dataColumn)
         {
             _writer.WriteStartObject();
-            _writer.WriteProperty("dataType", dataColumn.DataType, _serializer);
+            _writer.WriteProperty("dataType", dataColumn.DataType.FullName);
             _writer.WriteProperty("columnName", dataColumn.ColumnName);
 
             WritePropertyIf("readOnly", dataColumn.ReadOnly);
