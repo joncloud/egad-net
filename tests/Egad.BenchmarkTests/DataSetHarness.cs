@@ -93,18 +93,22 @@ namespace Egad.BenchmarkTests
             table.Columns.Add("Guid", typeof(Guid));
             table.Columns.Add("string", typeof(string));
             table.Columns.Add("nullableInt", typeof(int));
-            
-            table.Rows.Add(
-                DateTime.MaxValue,
-                int.MaxValue,
-                (long)int.MaxValue + 1,
-                float.MaxValue,
-                double.MaxValue,
-                decimal.MaxValue / 10M,
-                Guid.Empty,
-                "lorem ipsum",
-                DBNull.Value
-            );
+
+            int count = 50;
+            while (--count >= 0)
+            {
+                table.Rows.Add(
+                    DateTime.MaxValue,
+                    int.MaxValue,
+                    (long)int.MaxValue + 1,
+                    float.MaxValue,
+                    double.MaxValue,
+                    decimal.MaxValue / 10M,
+                    Guid.Empty,
+                    "lorem ipsum",
+                    DBNull.Value
+                );
+            }
 
             return table;
         }
@@ -125,13 +129,13 @@ namespace Egad.BenchmarkTests
 
                     if (type.HasFlag(DataSetType.Relationship))
                     {
-                        dataSet.Relations.Add(
-                            new DataRelation(
-                                "A",
-                                parent.Columns["Id"],
-                                child.Columns["ParentId"]
-                            )
-                        );
+                        //dataSet.Relations.Add(
+                        //    new DataRelation(
+                        //        "A",
+                        //        parent.Columns["Id"],
+                        //        child.Columns["ParentId"]
+                        //    )
+                        //);
                     }
                 }
             }

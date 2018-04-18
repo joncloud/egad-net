@@ -1,28 +1,100 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Xml;
 using Xunit;
 
 namespace Egad.UnitTests
 {
+    public class Tester
+    {
+        
+    }
+
 
     public class DataSetTests
     {
+        class Wrapper
+        {
+            public string A { get; set; }
+            public List<int> B { get; set; }
+            public DataSet DataSet { get; set; }
+            public List<int> Y { get; set; }
+            public string Z { get; set; }
+        }
+
         [Fact]
-        public void SchemaShouldMatch()
+        public void GivenDataSetArray_DiffGramShouldMatch()
+        {
+            var array = new[]
+            {
+                CreateDataSet(),
+                CreateDataSet(),
+                CreateDataSet()
+            };
+
+            var copy = Json.Clone(array);
+
+            Assert.NotNull(copy);
+            Assert.Equal(array.Length, copy.Length);
+
+            for (int i = 0; i < array.Length; i++)
+            {
+                XmlAssert.Matches(array[i], copy[i], DiffGramTest);
+            }
+        }
+
+        [Fact]
+        public void GivenWrappedDataSet_DiffGramShouldMatch()
+        {
+            var wrapper = new Wrapper
+            {
+                A = "A",
+                B = new List<int> { 1, 2, 3 },
+                DataSet = CreateDataSet(),
+                Y = new List<int> { 4, 5, 6 },
+                Z = "Z"
+            };
+
+            var copy = Json.Clone(wrapper);
+
+            Assert.NotNull(copy);
+            Assert.Equal(wrapper.A, copy.A);
+            Assert.Equal(wrapper.B, copy.B);
+            Assert.Equal(wrapper.Y, copy.Y);
+            Assert.Equal(wrapper.Z, copy.Z);
+
+            XmlAssert.Matches(wrapper.DataSet, copy.DataSet, DiffGramTest);
+        }
+
+        [Fact]
+        public void GivenSingleDataSet_SchemaShouldMatch()
         {
             var dataSet = CreateDataSet();
+
+            // TODO handle constraints and relationships.
+            foreach (DataTable dataTable in dataSet.Tables)
+            {
+                dataTable.Constraints.Clear();
+            }
+            dataSet.Relations.Clear();
 
             XmlAssert.Matches(dataSet, (ds, writer) => ds.WriteXmlSchema(writer));
         }
 
         [Fact]
-        public void DiffGramShouldMatch()
+        public void GivenSingleDataSet_DiffGramShouldMatch()
         {
             var dataSet = CreateDataSet();
-
-            XmlAssert.Matches(dataSet, (ds, writer) => ds.WriteXml(writer, XmlWriteMode.DiffGram));
+            XmlAssert.Matches(dataSet, DiffGramTest);
         }
 
+        static void DiffGramTest(DataSet dataSet, XmlWriter xmlWriter)
+        {
+            dataSet.WriteXml(xmlWriter, XmlWriteMode.DiffGram);
+
+        }
         static DataSet CreateDataSet()
         {
             var dataSet = new DataSet("MyDataSet");
@@ -47,13 +119,13 @@ namespace Egad.UnitTests
             AddChildRow(parentRowId, 0.01M, _ => { });
             AddChildRow(parentRowId, 0.001M, _ => { });
 
-            // dataSet.Relations.Add(
-            //     new DataRelation(
-            //         "A",
-            //         parent.Columns["Id"],
-            //         child.Columns["ParentId"]
-            //     )
-            // );
+            dataSet.Relations.Add(
+                new DataRelation(
+                    "A",
+                    parent.Columns["Id"],
+                    child.Columns["ParentId"]
+                )
+            );
 
             var dataTypes = dataSet.Tables.Add("DataTypes");
 

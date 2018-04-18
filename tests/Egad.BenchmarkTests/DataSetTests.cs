@@ -1,4 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes.Columns;
+using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
 using Newtonsoft.Json;
 using System;
@@ -7,6 +9,8 @@ using System.IO;
 
 namespace Egad.BenchmarkTests
 {
+    [GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+    [CategoriesColumn]
     public abstract class DataSetTests
     {
         readonly DataSetType _type;
@@ -20,7 +24,8 @@ namespace Egad.BenchmarkTests
             _harness = new DataSetHarness(_type);
         }
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
+        [BenchmarkCategory("Write")]
         public Tuple<MemoryStream, MemoryStream> Xml_Write()
         {
             var schema = new MemoryStream();
@@ -32,7 +37,8 @@ namespace Egad.BenchmarkTests
             return Tuple.Create(schema, data);
         }
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
+        [BenchmarkCategory("Read")]
         public DataSet Xml_Read()
         {
             _harness.XmlSchema.Position = 0;
@@ -46,6 +52,7 @@ namespace Egad.BenchmarkTests
         }
 
         [Benchmark]
+        [BenchmarkCategory("Write")]
         public MemoryStream Json_Write()
         {
             var memory = new MemoryStream();
@@ -59,6 +66,7 @@ namespace Egad.BenchmarkTests
         }
 
         [Benchmark]
+        [BenchmarkCategory("Read")]
         public DataSet Json_Read()
         {
             _harness.Json.Position = 0;
