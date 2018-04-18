@@ -129,13 +129,13 @@ namespace Egad.BenchmarkTests
 
                     if (type.HasFlag(DataSetType.Relationship))
                     {
-                        dataSet.Relations.Add(
-                            new DataRelation(
-                                "A",
-                                parent.Columns["Id"],
-                                child.Columns["ParentId"]
-                            )
-                        );
+                        //dataSet.Relations.Add(
+                        //    new DataRelation(
+                        //        "A",
+                        //        parent.Columns["Id"],
+                        //        child.Columns["ParentId"]
+                        //    )
+                        //);
                     }
                 }
             }

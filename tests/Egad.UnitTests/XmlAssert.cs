@@ -7,16 +7,24 @@ using Xunit;
 
 namespace Egad.UnitTests
 {
-    class XmlAssert
+    static class XmlAssert
     {
         public static void Matches(DataSet dataSet, Action<DataSet, XmlWriter> fn)
         {
-            var cloned = Clone(dataSet);
+            var cloned = Json.Clone(dataSet);
 
             var expected = SerializeXml(dataSet, fn);
             var actual = SerializeXml(cloned, fn);
 
             Assert.Equal(expected, actual);
+        }
+
+        public static void Matches(DataSet expected, DataSet actual, Action<DataSet, XmlWriter> fn)
+        {
+            var expectedXml = SerializeXml(expected, fn);
+            var actualXml = SerializeXml(actual, fn);
+
+            Assert.Equal(expectedXml, actualXml);
         }
 
         static string SerializeXml(DataSet dataSet, Action<DataSet, XmlWriter> fn)
@@ -28,12 +36,15 @@ namespace Egad.UnitTests
                 return stringWriter.ToString();
             }
         }
+    }
 
-        static DataSet Clone(DataSet dataSet)
+    static class Json
+    {
+        public static T Clone<T>(T value)
         {
             var settings = new JsonSerializerSettings().UseEgad();
-            var json = JsonConvert.SerializeObject(dataSet, settings);
-            return JsonConvert.DeserializeObject<DataSet>(json, settings);
+            var json = JsonConvert.SerializeObject(value, settings);
+            return JsonConvert.DeserializeObject<T>(json, settings);
         }
     }
 }
