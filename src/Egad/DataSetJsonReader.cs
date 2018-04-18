@@ -501,7 +501,7 @@ namespace Egad
                         _dataColumn.Expression = (string)reader.Value;
                         break;
                     case "dataType":
-                        _dataColumn.DataType = _serializer.Deserialize<Type>(reader);
+                        _dataColumn.DataType = TypeCache.GetDataType((string)reader.Value);
                         break;
                     case "defaultValue":
                         if (reader.TokenType == JsonToken.Null)

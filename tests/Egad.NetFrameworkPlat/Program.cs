@@ -1,109 +1,47 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Newtonsoft.Json;
+using System;
 using System.Data;
-using System.Xml;
-using Xunit;
+using System.IO;
+using ThorNet;
 
-namespace Egad.UnitTests
+namespace Egad.NetFrameworkPlat
 {
-    public class DataSetTests
+    public class Program : Thor
     {
-        [Fact]
-        public void GivenNetPlatformBoundary_DiffGramShouldMatch()
-        {
-            var original = CreateDataSet();
-            var copy = NetPlatformTester.Passthrough(original);
+        readonly JsonSerializer _serializer = new JsonSerializer().UseEgad();
 
-            XmlAssert.Matches(original, copy, DiffGramTest);
-        }
+        static int Main(string[] args) => Start<Program>(args);
 
-        [Fact]
-        public void GivenNetPlatformBoundary_DataSetShouldDeserialize()
+        DataSet ReadStdin()
         {
-            var dataSet = NetPlatformTester.Generate();
-            Assert.NotNull(dataSet);
-        }
-
-        class Wrapper
-        {
-            public string A { get; set; }
-            public List<int> B { get; set; }
-            public DataSet DataSet { get; set; }
-            public List<int> Y { get; set; }
-            public string Z { get; set; }
-        }
-
-        [Fact]
-        public void GivenDataSetArray_DiffGramShouldMatch()
-        {
-            var array = new[]
+            using (var stream = Console.OpenStandardInput())
+            using (var reader = new StreamReader(stream))
+            using (var jsonReader = new JsonTextReader(reader))
             {
-                CreateDataSet(),
-                CreateDataSet(),
-                CreateDataSet()
-            };
-
-            var copy = Json.Clone(array);
-
-            Assert.NotNull(copy);
-            Assert.Equal(array.Length, copy.Length);
-
-            for (int i = 0; i < array.Length; i++)
-            {
-                XmlAssert.Matches(array[i], copy[i], DiffGramTest);
+                return _serializer.Deserialize<DataSet>(jsonReader);
             }
         }
-
-        [Fact]
-        public void GivenWrappedDataSet_DiffGramShouldMatch()
+        void WriteStdOut(DataSet dataSet)
         {
-            var wrapper = new Wrapper
+            using (var stream = Console.OpenStandardOutput())
+            using (var writer = new StreamWriter(stream))
+            using (var jsonWriter = new JsonTextWriter(writer))
             {
-                A = "A",
-                B = new List<int> { 1, 2, 3 },
-                DataSet = CreateDataSet(),
-                Y = new List<int> { 4, 5, 6 },
-                Z = "Z"
-            };
-
-            var copy = Json.Clone(wrapper);
-
-            Assert.NotNull(copy);
-            Assert.Equal(wrapper.A, copy.A);
-            Assert.Equal(wrapper.B, copy.B);
-            Assert.Equal(wrapper.Y, copy.Y);
-            Assert.Equal(wrapper.Z, copy.Z);
-
-            XmlAssert.Matches(wrapper.DataSet, copy.DataSet, DiffGramTest);
-        }
-
-        [Fact]
-        public void GivenSingleDataSet_SchemaShouldMatch()
-        {
-            var dataSet = CreateDataSet();
-
-            // TODO handle constraints and relationships.
-            foreach (DataTable dataTable in dataSet.Tables)
-            {
-                dataTable.Constraints.Clear();
+                _serializer.Serialize(jsonWriter, dataSet);
             }
-            dataSet.Relations.Clear();
-
-            XmlAssert.Matches(dataSet, (ds, writer) => ds.WriteXmlSchema(writer));
         }
-
-        [Fact]
-        public void GivenSingleDataSet_DiffGramShouldMatch()
+        
+        [Desc("generate", "generates a new dataset and writes json to stdout")]
+        public void generate()
         {
-            var dataSet = CreateDataSet();
-            XmlAssert.Matches(dataSet, DiffGramTest);
+            Try(() =>
+            {
+                var dataSet = CreateDataSet();
+
+                WriteStdOut(dataSet);
+            });
         }
 
-        static void DiffGramTest(DataSet dataSet, XmlWriter xmlWriter)
-        {
-            dataSet.WriteXml(xmlWriter, XmlWriteMode.DiffGram);
-
-        }
         static DataSet CreateDataSet()
         {
             var dataSet = new DataSet("MyDataSet");
@@ -176,6 +114,30 @@ namespace Egad.UnitTests
             }
 
             return dataSet;
+        }
+
+        void Try(Action fn)
+        {
+            try
+            {
+                fn();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw;
+            }
+        }
+
+        [Desc("passthrough", "clones stdin json as dataset and writes json to stdout")]
+        public void passthrough()
+        {
+            Try(() =>
+            {
+                var dataSet = ReadStdin();
+
+                WriteStdOut(dataSet);
+            });
         }
     }
 }
