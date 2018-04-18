@@ -8,7 +8,7 @@ namespace Egad.UnitTests
 {
     public class DataSetTests
     {
-        [Fact]
+        [PlatformFact]
         public void GivenNetPlatformBoundary_DiffGramShouldMatch()
         {
             var original = CreateDataSet();
@@ -17,7 +17,7 @@ namespace Egad.UnitTests
             XmlAssert.Matches(original, copy, DiffGramTest);
         }
 
-        [Fact]
+        [PlatformFact]
         public void GivenNetPlatformBoundary_DataSetShouldDeserialize()
         {
             var dataSet = NetPlatformTester.Generate();
