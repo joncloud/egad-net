@@ -1,7 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>Latest</LangVersion>
   </PropertyGroup>
   
   <PropertyGroup>
@@ -10,7 +11,7 @@
   </PropertyGroup>
   
   <PropertyGroup>
-    <Description>Converts DataSets to JSON using Json.NET</Description>
+    <Description>Converts DataSets to JSON</Description>
     <Copyright>Copyright (c) 2018 joncloud (jdberube@gmail.com)</Copyright>
     <AssemblyTitle>Egad</AssemblyTitle>
     <Authors>joncloud</Authors>
@@ -26,6 +27,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="System.Text.Json" Version="4.6.0" />
   </ItemGroup>
 </Project>

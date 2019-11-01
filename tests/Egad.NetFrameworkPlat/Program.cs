@@ -1,33 +1,33 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Data;
 using System.IO;
+using System.Text.Json;
 using ThorNet;
 
 namespace Egad.NetFrameworkPlat
 {
     public class Program : Thor
     {
-        readonly JsonSerializer _serializer = new JsonSerializer().UseEgad();
+        readonly JsonSerializerOptions _options = new JsonSerializerOptions().UseEgad();
 
         static int Main(string[] args) => Start<Program>(args);
 
         DataSet ReadStdin()
         {
-            using (var stream = Console.OpenStandardInput())
-            using (var reader = new StreamReader(stream))
-            using (var jsonReader = new JsonTextReader(reader))
-            {
-                return _serializer.Deserialize<DataSet>(jsonReader);
-            }
+            throw new NotImplementedException();
+            //using (var stream = Console.OpenStandardInput())
+            //using (var reader = new StreamReader(stream))
+            //using (var jsonReader = new JsonTextReader(reader))
+            //{
+            //    return _options.Deserialize<DataSet>(jsonReader);
+            //}
         }
         void WriteStdOut(DataSet dataSet)
         {
             using (var stream = Console.OpenStandardOutput())
-            using (var writer = new StreamWriter(stream))
-            using (var jsonWriter = new JsonTextWriter(writer))
+            using (var jsonWriter = new Utf8JsonWriter(stream))
             {
-                _serializer.Serialize(jsonWriter, dataSet);
+                JsonSerializer.Serialize(jsonWriter, dataSet, _options);
             }
         }
         

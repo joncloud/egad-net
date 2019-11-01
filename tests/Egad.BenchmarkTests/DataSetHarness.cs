@@ -1,13 +1,13 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Data;
 using System.IO;
+using System.Text.Json;
 
 namespace Egad.BenchmarkTests
 {
     public class DataSetHarness
     {
-        public readonly JsonSerializer JsonSerializer;
+        public readonly JsonSerializerOptions Options;
         public readonly DataSet DataSet;
         public readonly MemoryStream XmlSchema;
         public readonly MemoryStream XmlData;
@@ -15,7 +15,7 @@ namespace Egad.BenchmarkTests
 
         public DataSetHarness(DataSetType type)
         {
-            JsonSerializer = new JsonSerializer().UseEgad();
+            Options = new JsonSerializerOptions().UseEgad();
             DataSet = CreateDataSet(type);
 
             XmlSchema = new MemoryStream();
@@ -28,9 +28,8 @@ namespace Egad.BenchmarkTests
             XmlData.Position = 0;
 
             Json = new MemoryStream();
-            var writer = new StreamWriter(Json);
-
-            JsonSerializer.Serialize(writer, DataSet);
+            var writer = new Utf8JsonWriter(Json);
+            JsonSerializer.Serialize(writer, DataSet, Options);
 
             writer.Flush();
         }

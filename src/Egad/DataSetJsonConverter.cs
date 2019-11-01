@@ -1,19 +1,20 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Data;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Egad
 {
     class DataSetJsonConverter : JsonConverter<DataSet>
     {
-        public override DataSet ReadJson(JsonReader reader, Type objectType, DataSet existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public override DataSet Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            return new DataSetJsonReader(serializer, reader).Read();
+            return new DataSetJsonReader(options, ref reader).Read();
         }
 
-        public override void WriteJson(JsonWriter writer, DataSet value, JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, DataSet value, JsonSerializerOptions options)
         {
-            new DataSetJsonWriter(serializer, writer).Write(value);
+            new DataSetJsonWriter(options, writer).Write(value);
         }
     }
 }

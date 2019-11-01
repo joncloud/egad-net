@@ -1,7 +1,7 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Data;
 using System.IO;
+using System.Text.Json;
 using System.Xml;
 using Xunit;
 
@@ -42,9 +42,9 @@ namespace Egad.UnitTests
     {
         public static T Clone<T>(T value)
         {
-            var settings = new JsonSerializerSettings().UseEgad();
-            var json = JsonConvert.SerializeObject(value, settings);
-            return JsonConvert.DeserializeObject<T>(json, settings);
+            var options = new JsonSerializerOptions().UseEgad();
+            var json = JsonSerializer.Serialize(value, options);
+            return JsonSerializer.Deserialize<T>(json, options);
         }
     }
 }

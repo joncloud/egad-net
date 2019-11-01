@@ -2,10 +2,10 @@
 using BenchmarkDotNet.Attributes.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
-using Newtonsoft.Json;
 using System;
 using System.Data;
 using System.IO;
+using System.Text.Json;
 
 namespace Egad.BenchmarkTests
 {
@@ -56,23 +56,24 @@ namespace Egad.BenchmarkTests
         public MemoryStream Json_Write()
         {
             var memory = new MemoryStream();
-            var writer = new StreamWriter(memory);
+            var writer = new Utf8JsonWriter(memory);
 
-            _harness.JsonSerializer.Serialize(writer, _harness.DataSet);
+            JsonSerializer.Serialize(writer, _harness.DataSet, _harness.Options);
 
             writer.Flush();
 
             return memory;
         }
 
-        [Benchmark]
-        [BenchmarkCategory("Read")]
-        public DataSet Json_Read()
-        {
-            _harness.Json.Position = 0;
-            var reader = new StreamReader(_harness.Json);
-            var jsonReader = new JsonTextReader(reader);
-            return _harness.JsonSerializer.Deserialize<DataSet>(jsonReader);
-        }
+        //[Benchmark]
+        //[BenchmarkCategory("Read")]
+        //public DataSet Json_Read()
+        //{
+        //    _harness.Json.Position = 0;
+        //    var reader = new StreamReader(_harness.Json);
+        //    Utf8JsonReader
+        //    var jsonReader = new JsonTextReader(reader);
+        //    return _harness.Options.Deserialize<DataSet>(jsonReader);
+        //}
     }
 }

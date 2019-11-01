@@ -1,16 +1,17 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Egad.UnitTests
 {
     class MockConverter : JsonConverter<Mock>
     {
-        public override Mock ReadJson(JsonReader reader, Type objectType, Mock existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public override Mock Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             throw new NotImplementedException();
         }
 
-        public override void WriteJson(JsonWriter writer, Mock value, JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, Mock value, JsonSerializerOptions options)
         {
             throw new NotImplementedException();
         }

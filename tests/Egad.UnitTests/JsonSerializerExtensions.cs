@@ -1,5 +1,7 @@
 using Newtonsoft.Json;
 using System.Data;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Xunit;
 
 namespace Egad.UnitTests
@@ -9,7 +11,7 @@ namespace Egad.UnitTests
         [Fact]
         public void UseEgad_ShouldInsertDataSetConverterAtBeginningOfConverters()
         {
-            var serializer = new JsonSerializer();
+            var serializer = new JsonSerializerOptions();
             var mockConverter = new MockConverter();
             serializer.Converters.Add(mockConverter);
             serializer.UseEgad();

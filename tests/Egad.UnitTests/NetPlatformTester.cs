@@ -1,14 +1,14 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 
 namespace Egad.UnitTests
 {
     static class NetPlatformTester
     {
-        static readonly JsonSerializerSettings _settings = new JsonSerializerSettings().UseEgad();
+        static readonly JsonSerializerOptions _options = new JsonSerializerOptions().UseEgad();
 
         static ProcessStartInfo CreateProcessStartInfo(string command, bool redirectStandardOutput = false, bool redirectStandardInput = false)
         {
@@ -48,9 +48,9 @@ namespace Egad.UnitTests
 
             using (var process = Process.Start(processStartInfo))
             {
-                string json = JsonConvert.SerializeObject(
+                string json = JsonSerializer.Serialize(
                     dataSet,
-                    _settings
+                    _options
                 );
                 process.StandardInput.WriteLine(json);
 
@@ -60,7 +60,7 @@ namespace Egad.UnitTests
                 Console.WriteLine(json);
 
                 if (process.ExitCode == 0)
-                    return JsonConvert.DeserializeObject<DataSet>(json, _settings);
+                    return JsonSerializer.Deserialize<DataSet>(json, _options);
 
                 throw new InvalidOperationException($"Unexpected exit code {process.ExitCode}\r\n{json}");
             }
@@ -81,7 +81,7 @@ namespace Egad.UnitTests
                 Console.WriteLine(json);
 
                 if (process.ExitCode == 0)
-                    return JsonConvert.DeserializeObject<DataSet>(json, _settings);
+                    return JsonSerializer.Deserialize<DataSet>(json, _options);
 
                 throw new InvalidOperationException($"Unexpected exit code {process.ExitCode}\r\n{json}");
             }

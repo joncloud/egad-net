@@ -1,60 +1,58 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Data;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 
 namespace Egad
 {
-    class DataSetJsonReader
+    readonly ref struct DataSetJsonReader
     {
-        readonly JsonSerializer _serializer;
-        readonly JsonReader _reader;
-        public DataSetJsonReader(JsonSerializer serializer, JsonReader reader)
+        readonly JsonSerializerOptions _options;
+        readonly Utf8JsonReader _reader;
+        public DataSetJsonReader(JsonSerializerOptions options, ref Utf8JsonReader reader)
         {
-             _serializer = serializer;
+             _options = options;
              _reader = reader;
         }
 
         interface IDataSetLexer 
         {
-            void Lex(JsonReader reader);
+            void Lex(ref Utf8JsonReader reader);
         }
 
         abstract class LexerBase : IDataSetLexer
         {
-            readonly JsonToken _start;
-            readonly JsonToken _end;
+            readonly JsonTokenType _start;
+            readonly JsonTokenType _end;
 
-            protected LexerBase(JsonToken start, JsonToken end)
+            protected LexerBase(JsonTokenType start, JsonTokenType end)
             {
                 _start = start;
                 _end = end;
             }
 
-            public void Lex(JsonReader reader)
+            public void Lex(ref Utf8JsonReader reader)
             {
                 if (reader.TokenType != _start) return;
                 int depth = 1;
-                bool reading = true;
+                bool reading;
                 do
                 {
-                    reading = TryHandleToken(reader, ref depth, out var lexer);
+                    reading = TryHandleToken(ref reader, ref depth, out var lexer);
                     if (lexer != null)
                     {
-                        lexer.Lex(reader);
+                        lexer.Lex(ref reader);
                         if (reader.TokenType == _end) depth--;
                     }
                 } while (reading && depth > 0);
             }
 
-            protected abstract IDataSetLexer HandleToken(JsonReader reader);
+            protected abstract IDataSetLexer HandleToken(ref Utf8JsonReader reader);
 
             protected virtual void CompleteElement() { }
 
-            bool TryHandleToken(JsonReader reader, ref int depth, out IDataSetLexer lexer)
+            bool TryHandleToken(ref Utf8JsonReader reader, ref int depth, out IDataSetLexer lexer)
             {
                 lexer = null;
                 if (reader.Read())
@@ -70,7 +68,7 @@ namespace Egad
                         }
                     }
 
-                    lexer = HandleToken(reader);
+                    lexer = HandleToken(ref reader);
                     return true;
                 }
                 return false;
@@ -79,35 +77,35 @@ namespace Egad
 
         abstract class ArrayLexerBase : LexerBase
         {
-            protected ArrayLexerBase() : base(JsonToken.StartArray, JsonToken.EndArray)
+            protected ArrayLexerBase() : base(JsonTokenType.StartArray, JsonTokenType.EndArray)
             {
             }
 
-            protected abstract IDataSetLexer HandleObject(JsonReader reader);
+            protected abstract IDataSetLexer HandleObject(ref Utf8JsonReader reader);
 
-            protected override IDataSetLexer HandleToken(JsonReader reader) => HandleObject(reader);
+            protected override IDataSetLexer HandleToken(ref Utf8JsonReader reader) => HandleObject(ref reader);
         }
 
         abstract class ObjectLexerBase : LexerBase
         {
-            protected ObjectLexerBase() : base(JsonToken.StartObject, JsonToken.EndObject)
+            protected ObjectLexerBase() : base(JsonTokenType.StartObject, JsonTokenType.EndObject)
             {
             }
 
-            protected abstract IDataSetLexer HandleProperty(string propertyName, JsonReader reader);
+            protected abstract IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader);
 
             string _lastPropertyName;
-            protected override IDataSetLexer HandleToken(JsonReader reader)
+            protected override IDataSetLexer HandleToken(ref Utf8JsonReader reader)
             {
                 if (_lastPropertyName == null)
                 {
-                    if (reader.TokenType == JsonToken.PropertyName)
-                        _lastPropertyName = (string)reader.Value;
+                    if (reader.TokenType == JsonTokenType.PropertyName)
+                        _lastPropertyName = reader.GetString();
                     return null;
                 }
                 else
                 {
-                    var lexer = HandleProperty(_lastPropertyName, reader);
+                    var lexer = HandleProperty(_lastPropertyName, ref reader);
                     _lastPropertyName = null;
                     return lexer;
                 }
@@ -116,57 +114,59 @@ namespace Egad
 
         class DataSetLexer : ObjectLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             public DataSet DataSet { get; }
-            public DataSetLexer(JsonSerializer serializer) 
+            public DataSetLexer(JsonSerializerOptions options) 
             {
-                _serializer = serializer;
+                _options = options;
                 DataSet = new DataSet();
             }
 
-            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader)
+            protected override IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader)
             {
                 switch (propertyName)
                 {
                     case "dataSetName":
-                        DataSet.DataSetName = (string)reader.Value;
+                        DataSet.DataSetName = reader.GetString();
                         break;
                     case "enforceConstraints":
-                        DataSet.EnforceConstraints = (bool)reader.Value;
+                        DataSet.EnforceConstraints = reader.GetBoolean();
                         break;
                     case "locale":
-                        var locale = _serializer.Deserialize<CultureInfo>(reader);
+                        var locale = CultureInfo.GetCultureInfo(
+                            reader.GetString()
+                        );
                         if (!CultureInfo.CurrentCulture.Equals(locale))
                         {
                             DataSet.Locale = locale;
                         }
                         break;
                     case "prefix":
-                        DataSet.Prefix = (string)reader.Value;
+                        DataSet.Prefix = reader.GetString();
                         break;
                     case "caseSensitive":
-                        if ((bool)reader.Value)
+                        if (reader.GetBoolean())
                             DataSet.CaseSensitive = true;
                         break;
                     case "remotingFormat":
-                        DataSet.RemotingFormat = _serializer.Deserialize<SerializationFormat>(reader);
+                        DataSet.RemotingFormat = JsonSerializer.Deserialize<SerializationFormat>(ref reader, _options);
                         break;
                     case "schemaSerializationMode":
-                        DataSet.SchemaSerializationMode = _serializer.Deserialize<SchemaSerializationMode>(reader);
+                        DataSet.SchemaSerializationMode = JsonSerializer.Deserialize<SchemaSerializationMode>(ref reader, _options);
                         break;
                     case "namespace":
-                        var @namespace = (string)reader.Value;
+                        var @namespace = reader.GetString();
                         if (!string.IsNullOrWhiteSpace(@namespace))
                         {
                             DataSet.Namespace = @namespace;
                         }
                         break;
                     case "extendedProperties":
-                        return new PropertyCollectionLexer(_serializer, DataSet.ExtendedProperties);
+                        return new PropertyCollectionLexer(_options, DataSet.ExtendedProperties);
                     case "tables":
-                        return new DataTableCollectionLexer(_serializer, DataSet.Tables);
+                        return new DataTableCollectionLexer(_options, DataSet.Tables);
                     case "relations":
-                        return new DataRelationCollectionLexer(_serializer, DataSet);
+                        return new DataRelationCollectionLexer(_options, DataSet);
                 }
 
                 return null;
@@ -175,27 +175,27 @@ namespace Egad
 
         class DataRelationCollectionLexer : ObjectLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             readonly DataSet _dataSet;
             
-            public DataRelationCollectionLexer(JsonSerializer serializer, DataSet dataSet)
+            public DataRelationCollectionLexer(JsonSerializerOptions options, DataSet dataSet)
             {
-                _serializer = serializer;
+                _options = options;
                 _dataSet = dataSet;
             }
 
-            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader) =>
-                new DataRelationLexer(_serializer, _dataSet, propertyName);
+            protected override IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader) =>
+                new DataRelationLexer(_options, _dataSet, propertyName);
         }
 
         class DataRelationLexer : ObjectLexerBase
         {
             readonly string _name;
             readonly DataSet _dataSet;
-            readonly JsonSerializer _serializer;
-            public DataRelationLexer(JsonSerializer serializer, DataSet dataSet, string name)
+            readonly JsonSerializerOptions _options;
+            public DataRelationLexer(JsonSerializerOptions options, DataSet dataSet, string name)
             {
-                _serializer = serializer;
+                _options = options;
                 _dataSet = dataSet;
                 _name = name;
             }
@@ -224,28 +224,28 @@ namespace Egad
                 );
                 _added = true;
             }
-            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader)
+            protected override IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader)
             {
                 switch (propertyName)
                 {
                     case "parentColumnNames":
-                        _parentColumnNames = _serializer.Deserialize<string[]>(reader);
+                        _parentColumnNames = JsonSerializer.Deserialize<string[]>(ref reader, _options);
                         AddIfReached();
                         break;
                     case "nested":
-                        _nested = (bool)reader.Value;
+                        _nested = reader.GetBoolean();
                         AddIfReached();
                         break;
                     case "childTableName":
-                        _childTableName = (string)reader.Value;
+                        _childTableName = reader.GetString();
                         AddIfReached();
                         break;
                     case "childColumnNames":
-                        _childColumnNames = _serializer.Deserialize<string[]>(reader);
+                        _childColumnNames = JsonSerializer.Deserialize<string[]>(ref reader, _options);
                         AddIfReached();
                         break;
                     case "parentTableName":
-                        _parentTableName = (string)reader.Value;
+                        _parentTableName = reader.GetString();
                         AddIfReached();
                         break;
                 }
@@ -255,76 +255,80 @@ namespace Egad
 
         class DataTableCollectionLexer : ObjectLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             readonly DataTableCollection _dataTables;
 
-            public DataTableCollectionLexer(JsonSerializer serializer, DataTableCollection dataTables)
+            public DataTableCollectionLexer(JsonSerializerOptions options, DataTableCollection dataTables)
             {
-                _serializer = serializer;
+                _options = options;
                 _dataTables = dataTables;
             }
 
-            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader)
+            protected override IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader)
             {
                 var dataTable = _dataTables.Add(propertyName);
-                return new DataTableLexer(_serializer, dataTable);
+                return new DataTableLexer(_options, dataTable);
             }
         }
 
         class DataTableLexer : ObjectLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             readonly DataTable _dataTable;
 
-            public DataTableLexer(JsonSerializer serializer, DataTable dataTable)
+            public DataTableLexer(JsonSerializerOptions options, DataTable dataTable)
             {
-                _serializer = serializer;
+                _options = options;
                 _dataTable = dataTable;
             }
 
-            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader)
+            protected override IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader)
             {
                 switch (propertyName)
                 {
                     case "minimumCapacity":
-                        _dataTable.MinimumCapacity = (int)(long)reader.Value;
+                        _dataTable.MinimumCapacity = (int)reader.GetInt64();
                         break;
                     case "locale":
-                        var locale = _serializer.Deserialize<CultureInfo>(reader);
+                        var locale = CultureInfo.GetCultureInfo(
+                            reader.GetString()
+                        );
                         if (!CultureInfo.CurrentCulture.Equals(locale))
                         {
                             _dataTable.Locale = locale;
                         }
                         break;
                     case "extendedProperties":
-                        return new PropertyCollectionLexer(_serializer, _dataTable.ExtendedProperties);
+                        return new PropertyCollectionLexer(_options, _dataTable.ExtendedProperties);
                     case "namespace":
-                        var @namespace = (string)reader.Value;
+                        var @namespace = reader.GetString();
                         if (!string.IsNullOrWhiteSpace(@namespace))
                         {
                             _dataTable.Namespace = @namespace;
                         }
                         break;
                     case "columns":
-                        return new DataColumnCollectionLexer(_serializer, _dataTable.Columns);
+                        return new DataColumnCollectionLexer(_options, _dataTable.Columns);
                     case "displayExpression":
-                        _dataTable.DisplayExpression = (string)reader.Value;
+                        _dataTable.DisplayExpression = reader.GetString();
                         break;
                     case "remotingFormat":
-                        _dataTable.RemotingFormat = _serializer.Deserialize<SerializationFormat>(reader);
+                        _dataTable.RemotingFormat = JsonSerializer.Deserialize<SerializationFormat>(ref reader, _options);
                         break;
                     case "primaryKey":
                         // TODO ensure occurs after columns are set.
-                        _dataTable.PrimaryKey = _serializer.Deserialize<string[]>(reader).Select(name => _dataTable.Columns[name]).ToArray();
+                        _dataTable.PrimaryKey = JsonSerializer.Deserialize<string[]>(ref reader, _options)
+                            .Select(name => _dataTable.Columns[name])
+                            .ToArray();
                         break;
                     case "caseSensitive":
-                        if ((bool)reader.Value)
+                        if (reader.GetBoolean())
                             _dataTable.CaseSensitive = true;
                         break;
                     case "rows":
-                        return new DataRowCollectionLexer(_serializer, _dataTable);
+                        return new DataRowCollectionLexer(_options, _dataTable);
                     case "prefix":
-                        _dataTable.Prefix = (string)reader.Value;
+                        _dataTable.Prefix = reader.GetString();
                         break;
                 }
                 return null;
@@ -333,34 +337,34 @@ namespace Egad
 
         class DataRowCollectionLexer : ArrayLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             readonly DataTable _dataTable;
 
-            public DataRowCollectionLexer(JsonSerializer serializer, DataTable dataTable)
+            public DataRowCollectionLexer(JsonSerializerOptions options, DataTable dataTable)
             {
-                _serializer = serializer;
+                _options = options;
                 _dataTable = dataTable;
             }
 
-            protected override IDataSetLexer HandleObject(JsonReader reader)
+            protected override IDataSetLexer HandleObject(ref Utf8JsonReader reader)
             {
                 var dataRow = _dataTable.NewRow();
                 _dataTable.Rows.Add(dataRow);
-                return new DataRowLexer(_serializer, dataRow, _dataTable.Columns.Count);
+                return new DataRowLexer(_options, dataRow, _dataTable.Columns.Count);
             }
         }
 
         class DataRowCellsLexer : ArrayLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             readonly DataRow _dataRow;
             readonly DataRowState _rowState;
             readonly DataColumnCollection _dataColumns;
             readonly Action<DataRow> _complete;
 
-            public DataRowCellsLexer(JsonSerializer serializer, DataColumnCollection dataColumns, DataRow dataRow, DataRowState rowState, Action<DataRow> complete)
+            public DataRowCellsLexer(JsonSerializerOptions options, DataColumnCollection dataColumns, DataRow dataRow, DataRowState rowState, Action<DataRow> complete)
             {
-                _serializer = serializer;
+                _options = options;
                 _dataRow = dataRow;
                 _rowState = rowState;
                 _dataColumns = dataColumns;
@@ -373,13 +377,13 @@ namespace Egad
             }
 
             int _position;
-            protected override IDataSetLexer HandleObject(JsonReader reader)
+            protected override IDataSetLexer HandleObject(ref Utf8JsonReader reader)
             {
                 var column = _dataColumns[_position];
-                if (reader.TokenType == JsonToken.Null)
+                if (reader.TokenType == JsonTokenType.Null)
                     _dataRow[column] = DBNull.Value;
                 else
-                    _dataRow[column] = _serializer.Deserialize(reader, column.DataType);
+                    _dataRow[column] = JsonSerializer.Deserialize(ref reader, column.DataType, _options);
                 _position++;
                 return null;
             }
@@ -387,31 +391,31 @@ namespace Egad
 
         class DataRowLexer : ObjectLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             readonly DataRow _dataRow;
             readonly int _columnCount;
 
-            public DataRowLexer(JsonSerializer serializer, DataRow dataRow, int columnCount)
+            public DataRowLexer(JsonSerializerOptions options, DataRow dataRow, int columnCount)
             {
-                _serializer = serializer;
+                _options = options;
                 _dataRow = dataRow;
                 _columnCount = columnCount;
             }
 
             DataRowState _rowState;
-            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader)
+            protected override IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader)
             {
                 switch (propertyName)
                 {
                     case "rowError":
-                        _dataRow.RowError = (string)reader.Value;
+                        _dataRow.RowError = reader.GetString();
                         break;
                     case "rowState":
-                        _rowState = _serializer.Deserialize<DataRowState>(reader);
+                        _rowState = JsonSerializer.Deserialize<DataRowState>(ref reader, _options);
                         break;
                     case "currentValues":
                         return new DataRowCellsLexer(
-                            _serializer,
+                            _options,
                             _dataRow.Table.Columns,
                             _dataRow,
                             _rowState,
@@ -421,7 +425,7 @@ namespace Egad
                         );
                     case "originalValues":
                         return new DataRowCellsLexer(
-                            _serializer,
+                            _options,
                             _dataRow.Table.Columns,
                             _dataRow,
                             _rowState,
@@ -449,96 +453,96 @@ namespace Egad
 
         class DataColumnCollectionLexer : ArrayLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             readonly DataColumnCollection _dataColumns;
-            public DataColumnCollectionLexer(JsonSerializer serializer, DataColumnCollection dataColumns)
+            public DataColumnCollectionLexer(JsonSerializerOptions options, DataColumnCollection dataColumns)
             {
-                _serializer = serializer;
+                _options = options;
                 _dataColumns = dataColumns;
             }
 
-            protected override IDataSetLexer HandleObject(JsonReader reader)
+            protected override IDataSetLexer HandleObject(ref Utf8JsonReader reader)
             {
                 var dataColumn = new DataColumn();
                 _dataColumns.Add(dataColumn);
-                return new DataColumnLexer(_serializer, dataColumn);
+                return new DataColumnLexer(_options, dataColumn);
             }
         }
 
         class DataColumnLexer : ObjectLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             readonly DataColumn _dataColumn;
-            public DataColumnLexer(JsonSerializer serializer, DataColumn dataColumn)
+            public DataColumnLexer(JsonSerializerOptions options, DataColumn dataColumn)
             {
-                _serializer = serializer;
+                _options = options;
                 _dataColumn = dataColumn;
             }
 
-            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader)
+            protected override IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader)
             {
                 switch (propertyName)
                 {
                     case "readOnly":
-                        _dataColumn.ReadOnly = (bool)reader.Value;
+                        _dataColumn.ReadOnly = reader.GetBoolean();
                         break;
                     case "prefix":
-                        _dataColumn.Prefix = (string)reader.Value;
+                        _dataColumn.Prefix = reader.GetString();
                         break;
                     case "namespace":
-                        var @namespace = (string)reader.Value;
+                        var @namespace = reader.GetString();
                         if (!string.IsNullOrWhiteSpace(@namespace))
                         {
                             _dataColumn.Namespace = @namespace;
                         }
                         break;
                     case "maxLength":
-                        _dataColumn.MaxLength = (int)(long)reader.Value;
+                        _dataColumn.MaxLength = (int)reader.GetInt64();
                         break;
                     case "extendedProperties":
-                        return new PropertyCollectionLexer(_serializer, _dataColumn.ExtendedProperties);
+                        return new PropertyCollectionLexer(_options, _dataColumn.ExtendedProperties);
                     case "expression":
-                        _dataColumn.Expression = (string)reader.Value;
+                        _dataColumn.Expression = reader.GetString();
                         break;
                     case "dataType":
-                        _dataColumn.DataType = TypeCache.GetDataType((string)reader.Value);
+                        _dataColumn.DataType = TypeCache.GetDataType(reader.GetString());
                         break;
                     case "defaultValue":
-                        if (reader.TokenType == JsonToken.Null)
+                        if (reader.TokenType == JsonTokenType.Null)
                             _dataColumn.DefaultValue = DBNull.Value;
 
                         else
                         {
                             // TODO ensure called after datatype
-                            _dataColumn.DefaultValue = _serializer.Deserialize(reader, _dataColumn.DataType);
+                            _dataColumn.DefaultValue = JsonSerializer.Deserialize(ref reader, _dataColumn.DataType, _options);
                         }
                         break;
                     case "dateTimeMode":
-                        _dataColumn.DateTimeMode = _serializer.Deserialize<DataSetDateTime>(reader);
+                        _dataColumn.DateTimeMode = JsonSerializer.Deserialize<DataSetDateTime>(ref reader, _options);
                         break;
                     case "columnName":
-                        _dataColumn.ColumnName = (string)reader.Value;
+                        _dataColumn.ColumnName = reader.GetString();
                         break;
                     case "autoIncrementStep":
-                        _dataColumn.AutoIncrementStep = (long)reader.Value;
+                        _dataColumn.AutoIncrementStep = reader.GetInt64();
                         break;
                     case "caption":
-                        _dataColumn.Caption = (string)reader.Value;
+                        _dataColumn.Caption = reader.GetString();
                         break;
                     case "autoIncrementSeed":
-                        _dataColumn.AutoIncrementSeed = (long)reader.Value;
+                        _dataColumn.AutoIncrementSeed = reader.GetInt64();
                         break;
                     case "autoIncrement":
-                        _dataColumn.AutoIncrement = (bool)reader.Value;
+                        _dataColumn.AutoIncrement = reader.GetBoolean();
                         break;
                     case "allowDbNull":
-                        _dataColumn.AllowDBNull = (bool)reader.Value;
+                        _dataColumn.AllowDBNull = reader.GetBoolean();
                         break;
                     case "columnMapping":
-                        _dataColumn.ColumnMapping = _serializer.Deserialize<MappingType>(reader);
+                        _dataColumn.ColumnMapping = JsonSerializer.Deserialize<MappingType>(ref reader, _options);
                         break;
                     case "unique":
-                        _dataColumn.Unique = (bool)reader.Value;
+                        _dataColumn.Unique = reader.GetBoolean();
                         break;
                 }
                 return null;
@@ -547,27 +551,56 @@ namespace Egad
 
         class PropertyCollectionLexer : ObjectLexerBase
         {
-            readonly JsonSerializer _serializer;
+            readonly JsonSerializerOptions _options;
             readonly PropertyCollection _properties;
 
-            public PropertyCollectionLexer(JsonSerializer serializer, PropertyCollection properties)
+            public PropertyCollectionLexer(JsonSerializerOptions options, PropertyCollection properties)
             {
-                _serializer = serializer;
+                _options = options;
                 _properties = properties;
             }
 
-            protected override IDataSetLexer HandleProperty(string propertyName, JsonReader reader)
+            protected override IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader)
             {
-                var value = _serializer.Deserialize(reader);
-                _properties.Add(propertyName, value);
+                return new PropertyLexer(propertyName, _properties);
+            }
+        }
+
+        class PropertyLexer : ObjectLexerBase
+        {
+            readonly string _propertyName;
+            readonly PropertyCollection _properties;
+            Type _type;
+
+            public PropertyLexer(string propertyName, PropertyCollection properties)
+            {
+                _propertyName = propertyName;
+                _properties = properties;
+                _properties[_propertyName] = null;
+            }
+
+            protected override IDataSetLexer HandleProperty(string propertyName, ref Utf8JsonReader reader)
+            {
+                switch (propertyName)
+                {
+                    case "type":
+                        _type = TypeCache.GetDataType(reader.GetString());
+                        break;
+                    case "value":
+                        var value = reader.GetObject(_type);
+                        _properties[_propertyName] = value;
+                        break;
+                }
+
                 return null;
             }
         }
 
         public DataSet Read()
         {
-            var lexer = new DataSetLexer(_serializer);
-            lexer.Lex(_reader);
+            var lexer = new DataSetLexer(_options);
+            var reader = _reader;
+            lexer.Lex(ref reader);
             return lexer.DataSet;
         }
     }

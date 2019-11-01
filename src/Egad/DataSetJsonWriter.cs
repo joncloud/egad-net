@@ -1,17 +1,18 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Text.Json;
 
 namespace Egad
 {
-    class DataSetJsonWriter
+    readonly ref struct DataSetJsonWriter
     {
-        readonly JsonSerializer _serializer;
-        readonly JsonWriter _writer;
-        public DataSetJsonWriter(JsonSerializer serializer, JsonWriter writer)
+        readonly JsonSerializerOptions _options;
+        readonly Utf8JsonWriter _writer;
+        public DataSetJsonWriter(JsonSerializerOptions options, Utf8JsonWriter writer)
         {
-            _serializer = serializer;
+            _options = options;
             _writer = writer;
         }
 
@@ -19,38 +20,58 @@ namespace Egad
         {
             if (!propertyValue) return;
 
-            _writer.WriteProperty(propertyName, propertyValue);
+            _writer.WriteBoolean(propertyName, propertyValue);
         }
 
-        void WritePropertyIf<T>(string propertyName, T propertyValue, Func<T, bool> condition)
+        void WritePropertyIf(string propertyName, string propertyValue, Func<string, bool> condition)
         {
             if (condition(propertyValue))
-                _writer.WriteProperty(propertyName, propertyValue);
+                _writer.WriteString(propertyName, propertyValue);
         }
 
-        void WritePropertyIf<T>(string propertyName, T propertyValue, JsonSerializer serializer, Func<T, bool> condition)
+        void WritePropertyIf(string propertyName, IEnumerable<string> propertyValue, Func<IEnumerable<string>, bool> condition)
         {
             if (condition(propertyValue))
-                _writer.WriteProperty(propertyName, propertyValue, serializer);
+            {
+                _writer.WritePropertyName(propertyName);
+                _writer.WriteStartArray();
+                foreach (var value in propertyValue)
+                {
+                    _writer.WriteStringValue(value);
+                }
+                _writer.WriteEndArray();
+            }
+        }
+
+        void WritePropertyIf(string propertyName, int propertyValue, Func<int, bool> condition)
+        {
+            if (condition(propertyValue))
+                _writer.WriteNumber(propertyName, propertyValue);
+        }
+
+        void WritePropertyIf(string propertyName, long propertyValue, Func<long, bool> condition)
+        {
+            if (condition(propertyValue))
+                _writer.WriteNumber(propertyName, propertyValue);
         }
 
         static bool StringIsPopulated(string s) =>
             !string.IsNullOrWhiteSpace(s);
 
-        static bool ArrayHasElements<T>(T[] array) =>
-            array.Length > 0;
+        static bool ArrayHasElements<T>(IEnumerable<T> source) =>
+            source.Any();
 
         public void Write(DataSet dataSet)
         {
             _writer.WriteStartObject();
-            _writer.WriteProperty("dataSetName", dataSet.DataSetName);
+            _writer.WriteString("dataSetName", dataSet.DataSetName);
             WritePropertyIf("enforceConstraints", dataSet.EnforceConstraints);
             WriteProperties(dataSet.ExtendedProperties);
-            _writer.WriteProperty("locale", dataSet.Locale, _serializer);
+            _writer.WriteString("locale", dataSet.Locale.ToString());
             WritePropertyIf(dataSet.Prefix, dataSet.Prefix, StringIsPopulated);
             WritePropertyIf("caseSensitive", dataSet.CaseSensitive);
-            WritePropertyIf("remotingFormat", dataSet.RemotingFormat, x => x == SerializationFormat.Binary);
-            WritePropertyIf("schemaSerializationMode", dataSet.SchemaSerializationMode, x => x == SchemaSerializationMode.ExcludeSchema);
+            WritePropertyIf("remotingFormat", (int)dataSet.RemotingFormat, x => x == (int)SerializationFormat.Binary);
+            WritePropertyIf("schemaSerializationMode", (int)dataSet.SchemaSerializationMode, x => x == (int)SchemaSerializationMode.ExcludeSchema);
             WriteDataTables(dataSet.Tables);
             WritePropertyIf("namespace", dataSet.Namespace, StringIsPopulated);
             WriteDataRelations(dataSet.Relations);
@@ -75,14 +96,14 @@ namespace Egad
             _writer.WritePropertyName(dataTable.TableName);
             _writer.WriteStartObject();
             WritePropertyIf("minimumCapacity", dataTable.MinimumCapacity, capacity => capacity != 50);
-            _writer.WriteProperty("locale", dataTable.Locale, _serializer);
+            _writer.WriteString("locale", dataTable.Locale.ToString());
             WriteProperties(dataTable.ExtendedProperties);
             WritePropertyIf("namespace", dataTable.Namespace, StringIsPopulated);
             //TODO writer.WriteProperty("contraints", value.Constraints, serializer);
             WriteDataColumns(dataTable.Columns);
             WritePropertyIf("displayExpression", dataTable.DisplayExpression, StringIsPopulated);
-            WritePropertyIf("remotingFormat", dataTable.RemotingFormat, x => x == SerializationFormat.Binary);
-            WritePropertyIf("primaryKey", dataTable.PrimaryKey.Select(col => col.ColumnName).ToArray(), _serializer, ArrayHasElements);
+            WritePropertyIf("remotingFormat", (int)dataTable.RemotingFormat, x => x == (int)SerializationFormat.Binary);
+            WritePropertyIf("primaryKey", dataTable.PrimaryKey.Select(col => col.ColumnName), ArrayHasElements);
             WritePropertyIf("caseSensitive", dataTable.CaseSensitive);
             WritePropertyIf("prefix", dataTable.Prefix, StringIsPopulated);
             WriteDataRows(dataTable.Rows, dataTable.Columns.Count);
@@ -105,8 +126,8 @@ namespace Egad
         void WriteDataRow(DataRow dataRow, int columnCount)
         {
             _writer.WriteStartObject();
-            _writer.WriteProperty("rowError", dataRow.RowError);
-            _writer.WriteProperty("rowState", dataRow.RowState);
+            _writer.WriteString("rowError", dataRow.RowError);
+            _writer.WriteNumber("rowState", (int)dataRow.RowState);
             var state = dataRow.RowState;
             if (state == DataRowState.Deleted || state == DataRowState.Modified)
                 WriteCells(dataRow, columnCount, "originalValues", DataRowVersion.Original);
@@ -121,7 +142,8 @@ namespace Egad
             _writer.WriteStartArray();
             for (int i = 0; i < columnCount; i++)
             {
-                _writer.WriteValue(dataRow[i, version]);
+                var type = dataRow.Table.Columns[i].DataType;
+                _writer.WriteObjectValue(dataRow[i, version], type, _options);
             }
             _writer.WriteEndArray();
         }
@@ -142,8 +164,8 @@ namespace Egad
         void WriteDataColumn(DataColumn dataColumn)
         {
             _writer.WriteStartObject();
-            _writer.WriteProperty("dataType", dataColumn.DataType.FullName);
-            _writer.WriteProperty("columnName", dataColumn.ColumnName);
+            _writer.WriteString("dataType", dataColumn.DataType.FullName);
+            _writer.WriteString("columnName", dataColumn.ColumnName);
 
             WritePropertyIf("readOnly", dataColumn.ReadOnly);
             WritePropertyIf("prefix", dataColumn.Prefix, StringIsPopulated);
@@ -151,19 +173,19 @@ namespace Egad
             WritePropertyIf("maxLength", dataColumn.MaxLength, len => len > -1);
             WriteProperties(dataColumn.ExtendedProperties);
             WritePropertyIf("expression", dataColumn.Expression, StringIsPopulated);
-            WritePropertyIf("defaultValue", dataColumn.DefaultValue, val => val != DBNull.Value);
-            WritePropertyIf("dateTimeMode", dataColumn.DateTimeMode, val => val != DataSetDateTime.UnspecifiedLocal);
+            // TODO WritePropertyIf("defaultValue", dataColumn.DefaultValue, val => val != DBNull.Value);
+            WritePropertyIf("dateTimeMode", (int)dataColumn.DateTimeMode, val => val != (int)DataSetDateTime.UnspecifiedLocal);
 
             if (dataColumn.AutoIncrement)
             {
                 WritePropertyIf("autoIncrementStep", dataColumn.AutoIncrementStep, step => step != 1);
                 WritePropertyIf("autoIncrementSeed", dataColumn.AutoIncrementSeed, step => step != 0);
-                _writer.WriteProperty("autoIncrement", dataColumn.AutoIncrement);
+                _writer.WriteBoolean("autoIncrement", dataColumn.AutoIncrement);
             }
 
             WritePropertyIf("caption", dataColumn.Caption, StringIsPopulated);
             WritePropertyIf("allowDbNull", dataColumn.AllowDBNull);
-            WritePropertyIf("columnMapping", dataColumn.ColumnMapping, val => val != MappingType.Element);
+            WritePropertyIf("columnMapping", (int)dataColumn.ColumnMapping, val => val != (int)MappingType.Element);
             WritePropertyIf("unique", dataColumn.Unique);
             _writer.WriteEndObject();
         }
@@ -176,7 +198,22 @@ namespace Egad
             _writer.WriteStartObject();
             foreach (string key in properties.Keys)
             {
-                _writer.WriteProperty(key, properties[key]);
+                var value = properties[key];
+
+                _writer.WritePropertyName(key);
+
+                if (value == null)
+                {
+                    _writer.WriteNullValue();
+                }
+                else
+                {
+                    var type = value.GetType();
+                    _writer.WriteStartObject();
+                    _writer.WriteString("type", type.FullName);
+                    _writer.WriteObject("value", value, type, _options);
+                    _writer.WriteEndObject();
+                }
             }
             _writer.WriteEndObject();
         }
@@ -201,11 +238,11 @@ namespace Egad
             _writer.WriteStartObject();
 
             WriteProperties(dataRelation.ExtendedProperties);
-            _writer.WriteProperty("parentColumnNames", dataRelation.ParentColumns.Select(col => col.ColumnName).ToArray(), _serializer);
-            _writer.WriteProperty("nested", dataRelation.Nested);
-            _writer.WriteProperty("childTableName", dataRelation.ChildTable.TableName);
-            _writer.WriteProperty("childColumnNames", dataRelation.ChildColumns.Select(col => col.ColumnName).ToArray(), _serializer);
-            _writer.WriteProperty("parentTableName", dataRelation.ParentTable.TableName);
+            WritePropertyIf("parentColumnNames", dataRelation.ParentColumns.Select(col => col.ColumnName), ArrayHasElements);
+            _writer.WriteBoolean("nested", dataRelation.Nested);
+            _writer.WriteString("childTableName", dataRelation.ChildTable.TableName);
+            WritePropertyIf("childColumnNames", dataRelation.ChildColumns.Select(col => col.ColumnName), ArrayHasElements);
+            _writer.WriteString("parentTableName", dataRelation.ParentTable.TableName);
             //WriteUniqueConstraint("parentKeyConstraint", dataRelation.ParentKeyConstraint);
             //WriteForeignKeyConstraint("childKeyConstraint", dataRelation.ChildKeyConstraint);
             _writer.WriteEndObject();
@@ -215,9 +252,9 @@ namespace Egad
         {
             _writer.WritePropertyName(name);
             _writer.WriteStartObject();
-            _writer.WriteProperty("columnNames", uniqueConstraint.Columns.Select(col => col.ColumnName).ToArray(), _serializer);
-            _writer.WriteProperty("isPrimaryKey", uniqueConstraint.IsPrimaryKey);
-            _writer.WriteProperty("tableName", uniqueConstraint.Table.TableName);
+            WritePropertyIf("columnNames", uniqueConstraint.Columns.Select(col => col.ColumnName), ArrayHasElements);
+            _writer.WriteBoolean("isPrimaryKey", uniqueConstraint.IsPrimaryKey);
+            _writer.WriteString("tableName", uniqueConstraint.Table.TableName);
             _writer.WriteEndObject();
         }
 
@@ -226,13 +263,13 @@ namespace Egad
             _writer.WritePropertyName(name);
 
             _writer.WriteStartObject();
-            _writer.WriteProperty("acceptRejectRule", foreignKeyConstraint.AcceptRejectRule);
-            _writer.WriteProperty("columnNames", foreignKeyConstraint.Columns.Select(col => col.ColumnName).ToArray(), _serializer);
-            _writer.WriteProperty("deleteRule", foreignKeyConstraint.DeleteRule);
-            _writer.WriteProperty("relatedColumnNames", foreignKeyConstraint.RelatedColumns.Select(col => col.ColumnName).ToArray(), _serializer);
-            _writer.WriteProperty("relatedTableName", foreignKeyConstraint.RelatedTable.TableName);
-            _writer.WriteProperty("tableName", foreignKeyConstraint.Table.TableName);
-            _writer.WriteProperty("updateRule", foreignKeyConstraint.UpdateRule);
+            _writer.WriteNumber("acceptRejectRule", (int)foreignKeyConstraint.AcceptRejectRule);
+            WritePropertyIf("columnNames", foreignKeyConstraint.Columns.Select(col => col.ColumnName), ArrayHasElements);
+            _writer.WriteNumber("deleteRule", (int)foreignKeyConstraint.DeleteRule);
+            WritePropertyIf("relatedColumnNames", foreignKeyConstraint.RelatedColumns.Select(col => col.ColumnName), ArrayHasElements);
+            _writer.WriteString("relatedTableName", foreignKeyConstraint.RelatedTable.TableName);
+            _writer.WriteString("tableName", foreignKeyConstraint.Table.TableName);
+            _writer.WriteNumber("updateRule", (int)foreignKeyConstraint.UpdateRule);
             _writer.WriteEndObject();
         }
 
