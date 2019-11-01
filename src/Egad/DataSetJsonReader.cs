@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Data;
 using System.Globalization;
 using System.Linq;
@@ -6,16 +6,8 @@ using System.Text.Json;
 
 namespace Egad
 {
-    readonly ref struct DataSetJsonReader
+    static class DataSetJsonReader
     {
-        readonly JsonSerializerOptions _options;
-        readonly Utf8JsonReader _reader;
-        public DataSetJsonReader(JsonSerializerOptions options, ref Utf8JsonReader reader)
-        {
-             _options = options;
-             _reader = reader;
-        }
-
         interface IDataSetLexer 
         {
             void Lex(ref Utf8JsonReader reader);
@@ -596,16 +588,10 @@ namespace Egad
             }
         }
 
-        public DataSet Read()
+        public static DataSet Read(ref Utf8JsonReader reader, JsonSerializerOptions options)
         {
-            var lexer = new DataSetLexer(_options);
-            var reader = _reader;
+            var lexer = new DataSetLexer(options);
             lexer.Lex(ref reader);
-
-            // TODO we don't care about the remaining bits of JSON, but the framework
-            // appears to care that you really read the whole set of information.
-            while (reader.Read()) { }
-
             return lexer.DataSet;
         }
     }
