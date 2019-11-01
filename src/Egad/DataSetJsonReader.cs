@@ -601,6 +601,11 @@ namespace Egad
             var lexer = new DataSetLexer(_options);
             var reader = _reader;
             lexer.Lex(ref reader);
+
+            // TODO we don't care about the remaining bits of JSON, but the framework
+            // appears to care that you really read the whole set of information.
+            while (reader.Read()) { }
+
             return lexer.DataSet;
         }
     }
